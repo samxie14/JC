@@ -191,6 +191,68 @@
             box-shadow: none;
         }
 
+        .jump-container {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px solid #f1f3f5;
+        }
+
+        .jump-input-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .jump-input {
+            width: 120px;
+            padding: 10px;
+            font-size: 16px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .jump-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn-jump {
+            background: #667eea;
+            color: white;
+            padding: 10px 30px;
+            font-size: 16px;
+        }
+
+        .btn-jump:hover {
+            background: #5568d3;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+
+        .status-yes {
+            background: #51cf66;
+            color: white;
+        }
+
+        .status-no {
+            background: #ff6b6b;
+            color: white;
+        }
+
+        .status-pending {
+            background: #e9ecef;
+            color: #666;
+        }
+
         .login-container {
             background: white;
             border-radius: 20px;
@@ -275,7 +337,10 @@
     <div class="container hidden" id="appContainer">
         <h1>Code Validator</h1>
         
-        <div class="progress-info" id="progressInfo">Loading codes...</div>
+        <div class="progress-info" id="progressInfo">
+            Loading codes...
+            <span class="status-badge status-pending" id="statusBadge">Pending</span>
+        </div>
         <div class="code-display" id="codeDisplay">------</div>
         
         <div class="button-group" id="mainButtons">
@@ -287,6 +352,21 @@
         <div class="undo-container" id="undoContainer">
             <div class="status-text">✓ Marked as Yes</div>
             <button class="btn-undo" onclick="handleUndo()">Undo</button>
+        </div>
+
+        <div class="jump-container">
+            <div class="jump-input-group">
+                <input 
+                    type="number" 
+                    id="jumpInput" 
+                    class="jump-input" 
+                    placeholder="Jump to #"
+                    min="1"
+                    max="3024"
+                    onkeypress="handleJumpKeypress(event)"
+                >
+                <button class="btn-jump" onclick="handleJump()">Go</button>
+            </div>
         </div>
 
         <div class="stats">
@@ -415,22 +495,30 @@
         }
 
         function displayCurrentCode() {
+            // Loop around if we've reached the end
             if (currentIndex >= allCodes.length) {
-                // All codes reviewed
-                document.getElementById('codeDisplay').textContent = 'DONE!';
-                document.getElementById('progressInfo').textContent = 'All codes reviewed!';
-                document.getElementById('mainButtons').style.display = 'none';
-                document.getElementById('undoContainer').classList.remove('visible');
-                return;
+                currentIndex = 0;
+            }
+            
+            // Handle negative index (from back button)
+            if (currentIndex < 0) {
+                currentIndex = allCodes.length - 1;
             }
 
             const current = allCodes[currentIndex];
             document.getElementById('codeDisplay').textContent = current.code;
-            document.getElementById('progressInfo').textContent = `Code ${currentIndex + 1} of ${allCodes.length}`;
             
-            // Update back button state
+            // Show status badge
+            const statusBadge = document.getElementById('statusBadge');
+            statusBadge.className = 'status-badge status-' + current.status;
+            statusBadge.textContent = current.status.charAt(0).toUpperCase() + current.status.slice(1);
+            
+            // Update progress info
+            document.getElementById('progressInfo').innerHTML = `Code ${currentIndex + 1} of ${allCodes.length} <span class="status-badge status-${current.status}" id="statusBadge">${current.status.charAt(0).toUpperCase() + current.status.slice(1)}</span>`;
+            
+            // Back button is always enabled now (can loop around)
             const backButton = document.getElementById('backButton');
-            backButton.disabled = currentIndex === 0;
+            backButton.disabled = false;
             
             hideUndo();
         }
@@ -462,11 +550,12 @@
             if (!window.db) return;
             
             try {
+                lastSyncTime = Date.now();
                 const stateRef = window.dbRef(window.db, 'codeValidatorState');
                 await window.dbSet(stateRef, {
                     allCodes: allCodes,
                     currentIndex: currentIndex,
-                    lastUpdated: Date.now()
+                    lastUpdated: lastSyncTime
                 });
                 console.log('State saved to Firebase');
             } catch (error) {
@@ -497,6 +586,9 @@
         }
 
         // Listen for real-time updates from other users
+        let lastSyncTime = 0;
+        let isLocalUpdate = false;
+        
         function setupRealtimeSync() {
             if (!window.db) return;
             
@@ -505,10 +597,19 @@
                 if (snapshot.exists() && isAuthenticated) {
                     const data = snapshot.val();
                     
-                    // Only update if data is newer than our current state
-                    if (data.allCodes && data.allCodes.length > 0) {
+                    // Only update if data is newer and not from our own save
+                    if (data.allCodes && data.allCodes.length > 0 && data.lastUpdated !== lastSyncTime) {
+                        // Don't update currentIndex if user is in undo state
+                        const preserveIndex = isYesState;
+                        
+                        // Update the codes array (to get status changes from others)
                         allCodes = data.allCodes;
-                        currentIndex = data.currentIndex || 0;
+                        
+                        // Only update currentIndex if we're not in the middle of something
+                        if (!preserveIndex) {
+                            currentIndex = data.currentIndex || 0;
+                        }
+                        
                         updateStats();
                         displayCurrentCode();
                         console.log('State synced from Firebase');
@@ -518,8 +619,6 @@
         }
 
         function handleNo() {
-            if (currentIndex >= allCodes.length) return;
-            
             allCodes[currentIndex].status = 'no';
             currentIndex++;
             updateStats();
@@ -528,8 +627,6 @@
         }
 
         function handleYes() {
-            if (currentIndex >= allCodes.length) return;
-            
             allCodes[currentIndex].status = 'yes';
             updateStats();
             showUndo();
@@ -537,8 +634,6 @@
         }
 
         function handleUndo() {
-            if (currentIndex >= allCodes.length) return;
-            
             allCodes[currentIndex].status = 'pending';
             updateStats();
             hideUndo();
@@ -546,19 +641,40 @@
         }
 
         function handleBack() {
-            if (currentIndex === 0) return;
-            
-            // Move back one position
+            // Move back one position (will loop around)
             currentIndex--;
             
-            // If the previous code was marked, reset it to pending
-            if (allCodes[currentIndex].status !== 'pending') {
-                allCodes[currentIndex].status = 'pending';
-                updateStats();
+            if (currentIndex < 0) {
+                currentIndex = allCodes.length - 1;
             }
             
+            // Just display the previous code without changing its status
             displayCurrentCode();
-            saveState();
+        }
+
+        function handleJumpKeypress(event) {
+            if (event.key === 'Enter') {
+                handleJump();
+            }
+        }
+
+        function handleJump() {
+            const input = document.getElementById('jumpInput');
+            const jumpTo = parseInt(input.value);
+            
+            if (isNaN(jumpTo) || jumpTo < 1 || jumpTo > allCodes.length) {
+                alert(`Please enter a number between 1 and ${allCodes.length}`);
+                return;
+            }
+            
+            // Convert to 0-indexed
+            currentIndex = jumpTo - 1;
+            
+            // Just display the code without changing its status
+            displayCurrentCode();
+            
+            // Clear input
+            input.value = '';
         }
 
         // Initialize: load state or generate all codes
