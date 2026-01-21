@@ -259,6 +259,51 @@
             color: #666;
         }
 
+        .reset-container {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px solid #f1f3f5;
+        }
+
+        .btn-reset {
+            background: #868e96;
+            color: white;
+            padding: 10px 30px;
+            font-size: 14px;
+        }
+
+        .btn-reset:hover {
+            background: #6c757d;
+        }
+
+        .btn-confirm-reset {
+            background: #ff6b6b;
+            color: white;
+            padding: 10px 30px;
+            font-size: 14px;
+            animation: pulse 1s infinite;
+        }
+
+        .btn-confirm-reset:hover {
+            background: #ff5252;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.7;
+            }
+        }
+
+        .reset-warning {
+            color: #ff6b6b;
+            font-size: 14px;
+            margin-top: 10px;
+            font-weight: 600;
+        }
+
         .login-container {
             background: white;
             border-radius: 20px;
@@ -391,6 +436,12 @@
                 </div>
             </div>
         </div>
+
+        <div class="reset-container">
+            <button class="btn-reset" id="resetButton" onclick="handleResetClick()">Reset All Progress</button>
+            <button class="btn-confirm-reset hidden" id="confirmResetButton" onclick="handleConfirmReset()">⚠️ Confirm Reset - This Cannot Be Undone</button>
+            <div class="reset-warning hidden" id="resetWarning">Warning: This will erase all Yes/No decisions!</div>
+        </div>
     </div>
 
     <script type="module">
@@ -430,6 +481,7 @@
         let currentIndex = 0;
         let isYesState = false;
         let isAuthenticated = false;
+        let resetConfirmTimeout = null;
 
         // Generate all valid 6-digit codes with constraints:
         // - First digit: 6
@@ -713,6 +765,55 @@
             // Clear input
             input.value = '';
             input.classList.remove('invalid');
+        }
+
+        // Reset functionality
+        function handleResetClick() {
+            // Show confirmation button and warning
+            document.getElementById('resetButton').classList.add('hidden');
+            document.getElementById('confirmResetButton').classList.remove('hidden');
+            document.getElementById('resetWarning').classList.remove('hidden');
+            
+            // Auto-hide after 5 seconds if not confirmed
+            resetConfirmTimeout = setTimeout(() => {
+                cancelReset();
+            }, 5000);
+        }
+
+        function cancelReset() {
+            document.getElementById('resetButton').classList.remove('hidden');
+            document.getElementById('confirmResetButton').classList.add('hidden');
+            document.getElementById('resetWarning').classList.add('hidden');
+            
+            if (resetConfirmTimeout) {
+                clearTimeout(resetConfirmTimeout);
+                resetConfirmTimeout = null;
+            }
+        }
+
+        async function handleConfirmReset() {
+            // Clear the timeout
+            if (resetConfirmTimeout) {
+                clearTimeout(resetConfirmTimeout);
+                resetConfirmTimeout = null;
+            }
+            
+            // Reset all codes to pending
+            allCodes = generateAllCodes();
+            currentIndex = 0;
+            
+            // Hide reset buttons
+            cancelReset();
+            
+            // Update UI
+            displayCurrentCode();
+            updateStats();
+            
+            // Save to Firebase
+            await saveState();
+            
+            console.log('All progress reset');
+            alert('All progress has been reset!');
         }
 
         // Initialize: load state or generate all codes
