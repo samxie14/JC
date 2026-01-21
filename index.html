@@ -566,13 +566,9 @@
             const current = allCodes[currentIndex];
             document.getElementById('codeDisplay').textContent = current.code;
             
-            // Show status badge
-            const statusBadge = document.getElementById('statusBadge');
-            statusBadge.className = 'status-badge status-' + current.status;
-            statusBadge.textContent = current.status.charAt(0).toUpperCase() + current.status.slice(1);
-            
-            // Update progress info
-            document.getElementById('progressInfo').innerHTML = `Code ${currentIndex + 1} of ${allCodes.length} <span class="status-badge status-${current.status}" id="statusBadge">${current.status.charAt(0).toUpperCase() + current.status.slice(1)}</span>`;
+            // Update progress info with status badge (create HTML all at once)
+            const statusText = current.status.charAt(0).toUpperCase() + current.status.slice(1);
+            document.getElementById('progressInfo').innerHTML = `Code ${currentIndex + 1} of ${allCodes.length} <span class="status-badge status-${current.status}" id="statusBadge">${statusText}</span>`;
             
             // Back button is always enabled now (can loop around)
             const backButton = document.getElementById('backButton');
@@ -802,7 +798,12 @@
             
             // Reset all codes to pending
             allCodes = generateAllCodes();
-            currentIndex = 0;
+            
+            // Find code 660123 and start there
+            const startCodeIndex = allCodes.findIndex(c => c.code === '660123');
+            currentIndex = startCodeIndex >= 0 ? startCodeIndex : 0;
+            
+            console.log(`Reset to code ${allCodes[currentIndex].code} at index ${currentIndex}`);
             
             // Hide reset buttons
             cancelReset();
