@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Validator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 60px 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            max-width: 500px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 40px;
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .code-display {
+            font-size: 72px;
+            font-weight: 700;
+            color: #667eea;
+            letter-spacing: 12px;
+            margin: 40px 0;
+            font-family: 'Courier New', monospace;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-top: 40px;
+        }
+
+        button {
+            padding: 16px 48px;
+            font-size: 18px;
+            font-weight: 600;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .btn-no {
+            background: #ff6b6b;
+            color: white;
+        }
+
+        .btn-no:hover {
+            background: #ff5252;
+        }
+
+        .btn-yes {
+            background: #51cf66;
+            color: white;
+        }
+
+        .btn-yes:hover {
+            background: #40c057;
+        }
+
+        .btn-undo {
+            background: #ffa94d;
+            color: white;
+            padding: 14px 40px;
+            font-size: 16px;
+        }
+
+        .btn-undo:hover {
+            background: #ff922b;
+        }
+
+        .undo-container {
+            margin-top: 30px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+
+        .undo-container.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .status-text {
+            color: #51cf66;
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        .progress-info {
+            color: #999;
+            font-size: 14px;
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+
+        .stats {
+            margin-top: 40px;
+            padding-top: 30px;
+            border-top: 2px solid #f1f3f5;
+            color: #666;
+            font-size: 16px;
+        }
+
+        .stats-row {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 15px;
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #999;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        .complete-message {
+            color: #51cf66;
+            font-size: 20px;
+            font-weight: 600;
+            margin-top: 20px;
+        }
+
+        .btn-back {
+            background: #868e96;
+            color: white;
+        }
+
+        .btn-back:hover {
+            background: #6c757d;
+        }
+
+        .btn-back:disabled {
+            background: #ced4da;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-back:disabled:hover {
+            transform: none;
+            box-shadow: none;
+        }
+
+        .login-container {
+            background: white;
+            border-radius: 20px;
+            padding: 60px 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            max-width: 400px;
+            width: 100%;
+        }
+
+        .login-form {
+            margin-top: 30px;
+        }
+
+        .login-input {
+            width: 100%;
+            padding: 16px;
+            font-size: 16px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            transition: border-color 0.3s ease;
+        }
+
+        .login-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .login-button {
+            width: 100%;
+            padding: 16px;
+            font-size: 18px;
+            font-weight: 600;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .login-button:hover {
+            background: #5568d3;
+        }
+
+        .error-message {
+            color: #ff6b6b;
+            font-size: 14px;
+            margin-top: 10px;
+            display: none;
+        }
+
+        .error-message.visible {
+            display: block;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Screen -->
+    <div class="login-container" id="loginContainer">
+        <h1>Code Validator</h1>
+        <p style="color: #666; margin-bottom: 20px;">Enter password to continue</p>
+        <div class="login-form">
+            <input 
+                type="password" 
+                id="passwordInput" 
+                class="login-input" 
+                placeholder="Password"
+                onkeypress="handleLoginKeypress(event)"
+            >
+            <button class="login-button" onclick="handleLogin()">Login</button>
+            <div class="error-message" id="errorMessage">Incorrect password</div>
+        </div>
+    </div>
+
+    <!-- Main App (hidden initially) -->
+    <div class="container hidden" id="appContainer">
+        <h1>Code Validator</h1>
+        
+        <div class="progress-info" id="progressInfo">Loading codes...</div>
+        <div class="code-display" id="codeDisplay">------</div>
+        
+        <div class="button-group" id="mainButtons">
+            <button class="btn-back" onclick="handleBack()" id="backButton">← Back</button>
+            <button class="btn-no" onclick="handleNo()">No</button>
+            <button class="btn-yes" onclick="handleYes()">Yes</button>
+        </div>
+
+        <div class="undo-container" id="undoContainer">
+            <div class="status-text">✓ Marked as Yes</div>
+            <button class="btn-undo" onclick="handleUndo()">Undo</button>
+        </div>
+
+        <div class="stats">
+            <div class="stats-row">
+                <div class="stat-item">
+                    <span class="stat-label">Progress</span>
+                    <span class="stat-value" id="progressCount">0 / 3024</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Yes Count</span>
+                    <span class="stat-value" id="yesCount">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">No Count</span>
+                    <span class="stat-value" id="noCount">0</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const PASSWORD_HASH = '7f47c8e65d18b33e95720355273c39d8f7ed0c4c423a5dc2f0916809d74cc4f8';
+        
+        // Store all codes and their states
+        let allCodes = [];
+        let currentIndex = 0;
+        let isYesState = false;
+        let isAuthenticated = false;
+
+        // Generate all valid 6-digit codes with constraints:
+        // - First digit: 6
+        // - Second digit: 6
+        // - At least 5 unique digits
+        function generateAllCodes() {
+            const codes = [];
+            
+            // Start with "66", generate all combinations for remaining 4 digits (0000-9999)
+            for (let i = 0; i <= 9999; i++) {
+                // Pad with leading zeros to make it 4 digits
+                const lastFour = i.toString().padStart(4, '0');
+                const code = '66' + lastFour;
+                
+                // Check if code has at least 5 unique digits
+                if (hasAtLeast5UniqueDigits(code)) {
+                    codes.push({
+                        code: code,
+                        status: 'pending' // 'pending', 'yes', or 'no'
+                    });
+                }
+            }
+            
+            return codes;
+        }
+
+        function hasAtLeast5UniqueDigits(code) {
+            const digitCount = {};
+            for (let digit of code) {
+                digitCount[digit] = (digitCount[digit] || 0) + 1;
+            }
+            
+            const uniqueDigits = Object.keys(digitCount).length;
+            return uniqueDigits >= 5;
+        }
+
+        // Simple hash function for password
+        async function simpleHash(str) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(str);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+            return hashHex;
+        }
+
+        function handleLoginKeypress(event) {
+            if (event.key === 'Enter') {
+                handleLogin();
+            }
+        }
+
+        async function handleLogin() {
+            const password = document.getElementById('passwordInput').value;
+            const hash = await simpleHash(password);
+            
+            if (hash === PASSWORD_HASH) {
+                isAuthenticated = true;
+                document.getElementById('loginContainer').classList.add('hidden');
+                document.getElementById('appContainer').classList.remove('hidden');
+                init();
+            } else {
+                document.getElementById('errorMessage').classList.add('visible');
+                document.getElementById('passwordInput').value = '';
+                setTimeout(() => {
+                    document.getElementById('errorMessage').classList.remove('visible');
+                }, 3000);
+            }
+        }
+
+        function displayCurrentCode() {
+            if (currentIndex >= allCodes.length) {
+                // All codes reviewed
+                document.getElementById('codeDisplay').textContent = 'DONE!';
+                document.getElementById('progressInfo').textContent = 'All codes reviewed!';
+                document.getElementById('mainButtons').style.display = 'none';
+                document.getElementById('undoContainer').classList.remove('visible');
+                return;
+            }
+
+            const current = allCodes[currentIndex];
+            document.getElementById('codeDisplay').textContent = current.code;
+            document.getElementById('progressInfo').textContent = `Code ${currentIndex + 1} of ${allCodes.length}`;
+            
+            // Update back button state
+            const backButton = document.getElementById('backButton');
+            backButton.disabled = currentIndex === 0;
+            
+            hideUndo();
+        }
+
+        function showUndo() {
+            isYesState = true;
+            document.getElementById('mainButtons').style.display = 'none';
+            document.getElementById('undoContainer').classList.add('visible');
+        }
+
+        function hideUndo() {
+            isYesState = false;
+            document.getElementById('mainButtons').style.display = 'flex';
+            document.getElementById('undoContainer').classList.remove('visible');
+        }
+
+        function updateStats() {
+            const yesCount = allCodes.filter(c => c.status === 'yes').length;
+            const noCount = allCodes.filter(c => c.status === 'no').length;
+            const reviewedCount = yesCount + noCount;
+            
+            document.getElementById('progressCount').textContent = `${reviewedCount} / ${allCodes.length}`;
+            document.getElementById('yesCount').textContent = yesCount;
+            document.getElementById('noCount').textContent = noCount;
+        }
+
+        function handleNo() {
+            if (currentIndex >= allCodes.length) return;
+            
+            allCodes[currentIndex].status = 'no';
+            currentIndex++;
+            updateStats();
+            displayCurrentCode();
+        }
+
+        function handleYes() {
+            if (currentIndex >= allCodes.length) return;
+            
+            allCodes[currentIndex].status = 'yes';
+            updateStats();
+            showUndo();
+        }
+
+        function handleUndo() {
+            if (currentIndex >= allCodes.length) return;
+            
+            allCodes[currentIndex].status = 'pending';
+            updateStats();
+            hideUndo();
+        }
+
+        function handleBack() {
+            if (currentIndex === 0) return;
+            
+            // Move back one position
+            currentIndex--;
+            
+            // If the previous code was marked, reset it to pending
+            if (allCodes[currentIndex].status !== 'pending') {
+                allCodes[currentIndex].status = 'pending';
+                updateStats();
+            }
+            
+            displayCurrentCode();
+        }
+
+        // Initialize: generate all codes and display first one
+        function init() {
+            if (!isAuthenticated) return;
+            
+            document.getElementById('progressInfo').textContent = 'Generating all codes...';
+            
+            // Use setTimeout to allow UI to update before heavy computation
+            setTimeout(() => {
+                allCodes = generateAllCodes();
+                console.log(`Generated ${allCodes.length} valid codes`);
+                displayCurrentCode();
+                updateStats();
+            }, 100);
+        }
+
+        // Don't auto-init, wait for login
+    </script>
+</body>
+</html>
