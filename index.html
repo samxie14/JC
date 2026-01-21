@@ -46,6 +46,35 @@
             margin: 40px 0;
             font-family: 'Courier New', monospace;
             text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+            transition: color 0.3s ease;
+        }
+
+        .code-display.marked-yes {
+            color: #51cf66;
+        }
+
+        .code-display.marked-no {
+            color: #ff6b6b;
+        }
+
+        .status-indicator {
+            display: block;
+            font-size: 48px;
+            margin-top: -20px;
+            margin-bottom: 20px;
+            font-weight: 700;
+        }
+
+        .status-indicator.yes {
+            color: #51cf66;
+        }
+
+        .status-indicator.no {
+            color: #ff6b6b;
+        }
+
+        .status-indicator.pending {
+            display: none;
         }
 
         .button-group {
@@ -392,6 +421,7 @@
             Loading codes...
             <span class="status-badge status-pending" id="statusBadge">Pending</span>
         </div>
+        <div class="status-indicator pending" id="statusIndicator"></div>
         <div class="code-display" id="codeDisplay">------</div>
         
         <div class="button-group" id="mainButtons">
@@ -564,7 +594,25 @@
             }
 
             const current = allCodes[currentIndex];
-            document.getElementById('codeDisplay').textContent = current.code;
+            const codeDisplay = document.getElementById('codeDisplay');
+            const statusIndicator = document.getElementById('statusIndicator');
+            
+            // Update code display
+            codeDisplay.textContent = current.code;
+            
+            // Update code display color and status indicator based on status
+            codeDisplay.className = 'code-display';
+            statusIndicator.className = 'status-indicator ' + current.status;
+            
+            if (current.status === 'yes') {
+                codeDisplay.classList.add('marked-yes');
+                statusIndicator.textContent = '✓ Previously Marked YES';
+            } else if (current.status === 'no') {
+                codeDisplay.classList.add('marked-no');
+                statusIndicator.textContent = '✗ Previously Marked NO';
+            } else {
+                statusIndicator.textContent = '';
+            }
             
             // Update progress info with status badge (create HTML all at once)
             const statusText = current.status.charAt(0).toUpperCase() + current.status.slice(1);
