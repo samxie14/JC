@@ -307,6 +307,27 @@
         </div>
     </div>
 
+    <script type="module">
+        // Import the functions you need from the SDKs you need
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js";
+        // TODO: Add SDKs for Firebase products that you want to use
+        // https://firebase.google.com/docs/web/setup#available-libraries
+      
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+          apiKey: "AIzaSyAganiYbLArbNgHsadzrzgoax5K04qgWBs",
+          authDomain: "jc-validator-7eef9.firebaseapp.com",
+          databaseURL: "https://jc-validator-7eef9-default-rtdb.firebaseio.com",
+          projectId: "jc-validator-7eef9",
+          storageBucket: "jc-validator-7eef9.firebasestorage.app",
+          messagingSenderId: "1099044829321",
+          appId: "1:1099044829321:web:1f9b93fa5f4cf4af85ae58"
+        };
+      
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+      </script>
+
     <script>
         const PASSWORD_HASH = '7f47c8e65d18b33e95720355273c39d8f7ed0c4c423a5dc2f0916809d74cc4f8';
         
@@ -428,6 +449,66 @@
             document.getElementById('noCount').textContent = noCount;
         }
 
+        // Save state to Firebase
+        async function saveState() {
+            if (!window.db) return;
+            
+            try {
+                const stateRef = window.dbRef(window.db, 'codeValidatorState');
+                await window.dbSet(stateRef, {
+                    allCodes: allCodes,
+                    currentIndex: currentIndex,
+                    lastUpdated: Date.now()
+                });
+                console.log('State saved to Firebase');
+            } catch (error) {
+                console.error('Error saving state:', error);
+            }
+        }
+
+        // Load state from Firebase
+        async function loadState() {
+            if (!window.db) return null;
+            
+            try {
+                const stateRef = window.dbRef(window.db, 'codeValidatorState');
+                const snapshot = await window.dbGet(stateRef);
+                
+                if (snapshot.exists()) {
+                    const data = snapshot.val();
+                    console.log('State loaded from Firebase');
+                    return data;
+                } else {
+                    console.log('No saved state found');
+                    return null;
+                }
+            } catch (error) {
+                console.error('Error loading state:', error);
+                return null;
+            }
+        }
+
+        // Listen for real-time updates from other users
+        function setupRealtimeSync() {
+            if (!window.db) return;
+            
+            const stateRef = window.dbRef(window.db, 'codeValidatorState');
+            window.dbOnValue(stateRef, (snapshot) => {
+                if (snapshot.exists() && isAuthenticated) {
+                    const data = snapshot.val();
+                    
+                    // Only update if data is newer than our current state
+                    if (data.allCodes && data.allCodes.length > 0) {
+                        allCodes = data.allCodes;
+                        currentIndex = data.currentIndex || 0;
+                        updateStats();
+                        displayCurrentCode();
+                        console.log('State synced from Firebase');
+                    }
+                }
+            });
+        }
+
         function handleNo() {
             if (currentIndex >= allCodes.length) return;
             
@@ -435,6 +516,7 @@
             currentIndex++;
             updateStats();
             displayCurrentCode();
+            saveState();
         }
 
         function handleYes() {
@@ -443,6 +525,7 @@
             allCodes[currentIndex].status = 'yes';
             updateStats();
             showUndo();
+            saveState();
         }
 
         function handleUndo() {
@@ -451,6 +534,7 @@
             allCodes[currentIndex].status = 'pending';
             updateStats();
             hideUndo();
+            saveState();
         }
 
         function handleBack() {
@@ -466,21 +550,42 @@
             }
             
             displayCurrentCode();
+            saveState();
         }
 
-        // Initialize: generate all codes and display first one
-        function init() {
+        // Initialize: load state or generate all codes
+        async function init() {
             if (!isAuthenticated) return;
             
-            document.getElementById('progressInfo').textContent = 'Generating all codes...';
+            document.getElementById('progressInfo').textContent = 'Loading state...';
             
-            // Use setTimeout to allow UI to update before heavy computation
-            setTimeout(() => {
+            // Wait a bit for Firebase to be ready
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            // Try to load existing state
+            const savedState = await loadState();
+            
+            if (savedState && savedState.allCodes && savedState.allCodes.length > 0) {
+                // Use saved state
+                allCodes = savedState.allCodes;
+                currentIndex = savedState.currentIndex || 0;
+                console.log('Loaded saved state from Firebase');
+            } else {
+                // Generate new codes
+                document.getElementById('progressInfo').textContent = 'Generating all codes...';
                 allCodes = generateAllCodes();
+                currentIndex = 0;
                 console.log(`Generated ${allCodes.length} valid codes`);
-                displayCurrentCode();
-                updateStats();
-            }, 100);
+                
+                // Save initial state
+                await saveState();
+            }
+            
+            displayCurrentCode();
+            updateStats();
+            
+            // Setup real-time sync
+            setupRealtimeSync();
         }
 
         // Don't auto-init, wait for login
