@@ -598,6 +598,8 @@
             const noCount = allCodes.filter(c => c.status === 'no').length;
             const reviewedCount = yesCount + noCount;
             
+            console.log(`Stats - Yes: ${yesCount}, No: ${noCount}, Total Reviewed: ${reviewedCount}`);
+            
             document.getElementById('progressCount').textContent = `${reviewedCount} / ${allCodes.length}`;
             document.getElementById('yesCount').textContent = yesCount;
             document.getElementById('noCount').textContent = noCount;
@@ -832,7 +834,11 @@
                 // Use saved state
                 allCodes = savedState.allCodes;
                 currentIndex = savedState.currentIndex || 0;
-                console.log('Loaded saved state from Firebase');
+                
+                // Log the loaded state for debugging
+                const yesCount = allCodes.filter(c => c.status === 'yes').length;
+                const noCount = allCodes.filter(c => c.status === 'no').length;
+                console.log(`Loaded saved state from Firebase - Yes: ${yesCount}, No: ${noCount}, Current Index: ${currentIndex}`);
             } else {
                 // Generate new codes
                 document.getElementById('progressInfo').textContent = 'Generating all codes...';
