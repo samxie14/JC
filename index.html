@@ -205,17 +205,23 @@
         }
 
         .jump-input {
-            width: 120px;
+            width: 180px;
             padding: 10px;
             font-size: 16px;
             border: 2px solid #e9ecef;
             border-radius: 8px;
             text-align: center;
+            font-family: 'Courier New', monospace;
+            letter-spacing: 2px;
         }
 
         .jump-input:focus {
             outline: none;
             border-color: #667eea;
+        }
+        
+        .jump-input.invalid {
+            border-color: #ff6b6b;
         }
 
         .btn-jump {
@@ -357,15 +363,15 @@
         <div class="jump-container">
             <div class="jump-input-group">
                 <input 
-                    type="number" 
+                    type="text" 
                     id="jumpInput" 
                     class="jump-input" 
-                    placeholder="Jump to #"
-                    min="1"
-                    max="3024"
+                    placeholder="Enter 6-digit code"
+                    maxlength="6"
                     onkeypress="handleJumpKeypress(event)"
+                    oninput="validateJumpInput(this)"
                 >
-                <button class="btn-jump" onclick="handleJump()">Go</button>
+                <button class="btn-jump" onclick="handleJump()">Jump</button>
             </div>
         </div>
 
@@ -652,6 +658,11 @@
             displayCurrentCode();
         }
 
+        function validateJumpInput(input) {
+            // Only allow digits
+            input.value = input.value.replace(/[^0-9]/g, '');
+        }
+
         function handleJumpKeypress(event) {
             if (event.key === 'Enter') {
                 handleJump();
@@ -660,21 +671,48 @@
 
         function handleJump() {
             const input = document.getElementById('jumpInput');
-            const jumpTo = parseInt(input.value);
+            const codeToFind = input.value.trim();
             
-            if (isNaN(jumpTo) || jumpTo < 1 || jumpTo > allCodes.length) {
-                alert(`Please enter a number between 1 and ${allCodes.length}`);
+            // Validate: must be exactly 6 digits
+            if (codeToFind.length !== 6 || !/^\d{6}$/.test(codeToFind)) {
+                input.classList.add('invalid');
+                alert('Please enter a valid 6-digit code');
+                setTimeout(() => input.classList.remove('invalid'), 1000);
                 return;
             }
             
-            // Convert to 0-indexed
-            currentIndex = jumpTo - 1;
+            // Check if code satisfies constraints (starts with 66, at least 5 unique digits)
+            if (!codeToFind.startsWith('66')) {
+                input.classList.add('invalid');
+                alert('Invalid code: must start with "66"');
+                setTimeout(() => input.classList.remove('invalid'), 1000);
+                return;
+            }
             
-            // Just display the code without changing its status
+            if (!hasAtLeast5UniqueDigits(codeToFind)) {
+                input.classList.add('invalid');
+                alert('Invalid code: must have at least 5 unique digits');
+                setTimeout(() => input.classList.remove('invalid'), 1000);
+                return;
+            }
+            
+            // Find the code in our list
+            const index = allCodes.findIndex(c => c.code === codeToFind);
+            
+            if (index === -1) {
+                input.classList.add('invalid');
+                alert('Code not found in the valid codes list');
+                setTimeout(() => input.classList.remove('invalid'), 1000);
+                return;
+            }
+            
+            // Jump to the code
+            currentIndex = index;
             displayCurrentCode();
             
             // Clear input
             input.value = '';
+            input.classList.remove('invalid');
         }
 
         // Initialize: load state or generate all codes
